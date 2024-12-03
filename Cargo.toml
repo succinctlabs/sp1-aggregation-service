@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "lib",
+    "program", "rpc",
+    "script", "service", "types",
+]
+resolver = "2"
+
+[workspace.dependencies]
+alloy-sol-types = "0.7.7"
+types = { path = "types" }

@@ -1,0 +1,101 @@
+// The RPC for interacting with the Aggregation DB
+syntax = "proto3";
+
+package aggregation;
+
+service AggregationService {
+    // Get the merkle proof for a given proof
+    rpc GetAggregatedData(GetAggregatedDataRequest) returns (GetAggregatedDataResponse) {}
+    // Creates an aggregation request
+    rpc AggregateProof(AggregateProofRequest) returns (AggregateProofResponse) {}
+    // Get a batch of proofs that have not yet been aggregated
+    rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
+    // Write a merkle proof to the database
+    rpc WriteMerkleProof(WriteMerkleProofRequest) returns (WriteMerkleProofResponse) {}
+}
+
+message GetAggregatedDataRequest {
+    // The proof id to get the merkle proof for
+    bytes proof_id = 1;
+}
+
+message GetAggregatedDataResponse {
+    // The merkle proof for the given account
+    repeated bytes proof = 1;
+    // Status of the call
+    ResponseStatus status = 2;
+}
+
+message AggregateProofRequest {
+    // The proof to aggregate
+    string proof_uri = 1;
+    // The corresponding vk
+    string vk_uri = 2;
+}
+
+message GetBatchRequest {
+    // The unix timestamp to get all proof requests created after
+    uint64 created_after = 1;
+    // The number of proofs to return (default is 32)
+    optional uint64 batch_size = 2;
+}
+
+message GetBatchResponse {
+    // The list of proof requests
+    repeated ProofRequest proofs = 1;
+    // The identifier of the batch
+    bytes batch_id = 2;
+}
+
+message WriteMerkleProofRequest {
+    // The merkle tree to write
+    bytes tree = 1;
+    // The identifier of the batch
+    bytes batch_id = 2;
+}
+
+message WriteMerkleProofResponse {
+    // Indicates if the write was successful
+    bool success = 1;
+}
+
+
+message ProofRequest {
+    // The identifier of the proof
+    bytes proof_id = 1;
+    // The aggregation status of the proof
+    AggregationStatus status = 2;
+    // The proof resourse identifier
+    string proof_uri = 3;
+    // The corresponding vk resource identifier
+    string vk_uri = 4;
+    // The unix timestamp of when the request was created
+    uint64 created_at = 5;
+}
+
+message AggregateProofResponse {
+    // The identifier of the proof
+    bytes proof_id = 1; 
+}
+
+enum AggregationStatus {
+    UNSPECIFIED_AGGREGATION_STATUS = 0;
+    // The proof is pending aggregation
+    PENDING = 1;
+    // The proof has been aggregated
+    AGGREGATED = 2;
+    // The proof has been verified
+    VERIFIED = 3;
+    // The proof verification failed
+    FAILED = 4;
+}
+
+enum ResponseStatus {
+    UNSPECIFIED_RESPONSE_STATUS = 0;
+    // Proof hash was not found
+    NOT_FOUND = 1;
+    // Proof hash was found but not yet aggregated  
+    AGGREGATION_PENDING = 2;
+    // Proof hash was found and aggregated
+    AGGREGATION_COMPLETE = 3;
+}
