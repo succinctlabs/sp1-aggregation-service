@@ -20,11 +20,11 @@ pub struct GetAggregatedDataResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AggregateProofRequest {
     /// The proof to aggregate
-    #[prost(string, tag = "1")]
-    pub proof_uri: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "1")]
+    pub proof: ::prost::alloc::vec::Vec<u8>,
     /// The corresponding vk
-    #[prost(string, tag = "2")]
-    pub vk_uri: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "2")]
+    pub vk: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -48,7 +48,7 @@ pub struct GetBatchResponse {
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WriteMerkleProofRequest {
+pub struct WriteMerkleTreeRequest {
     /// The merkle tree to write
     #[prost(bytes = "vec", tag = "1")]
     pub tree: ::prost::alloc::vec::Vec<u8>,
@@ -58,7 +58,7 @@ pub struct WriteMerkleProofRequest {
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct WriteMerkleProofResponse {
+pub struct WriteMerkleTreeResponse {
     /// Indicates if the write was successful
     #[prost(bool, tag = "1")]
     pub success: bool,
@@ -73,11 +73,11 @@ pub struct ProofRequest {
     #[prost(enumeration = "AggregationStatus", tag = "2")]
     pub status: i32,
     /// The proof resourse identifier
-    #[prost(string, tag = "3")]
-    pub proof_uri: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "3")]
+    pub proof: ::prost::alloc::vec::Vec<u8>,
     /// The corresponding vk resource identifier
-    #[prost(string, tag = "4")]
-    pub vk_uri: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "4")]
+    pub vk: ::prost::alloc::vec::Vec<u8>,
     /// The unix timestamp of when the request was created
     #[prost(uint64, tag = "5")]
     pub created_at: u64,
@@ -339,12 +339,12 @@ pub mod aggregation_service_client {
                 .insert(GrpcMethod::new("aggregation.AggregationService", "GetBatch"));
             self.inner.unary(req, path, codec).await
         }
-        /// Write a merkle proof to the database
-        pub async fn write_merkle_proof(
+        /// Write a merkle tree to the database
+        pub async fn write_merkle_tree(
             &mut self,
-            request: impl tonic::IntoRequest<super::WriteMerkleProofRequest>,
+            request: impl tonic::IntoRequest<super::WriteMerkleTreeRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::WriteMerkleProofResponse>,
+            tonic::Response<super::WriteMerkleTreeResponse>,
             tonic::Status,
         > {
             self.inner
@@ -357,12 +357,12 @@ pub mod aggregation_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aggregation.AggregationService/WriteMerkleProof",
+                "/aggregation.AggregationService/WriteMerkleTree",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
-                    GrpcMethod::new("aggregation.AggregationService", "WriteMerkleProof"),
+                    GrpcMethod::new("aggregation.AggregationService", "WriteMerkleTree"),
                 );
             self.inner.unary(req, path, codec).await
         }
@@ -405,12 +405,12 @@ pub mod aggregation_service_server {
             tonic::Response<super::GetBatchResponse>,
             tonic::Status,
         >;
-        /// Write a merkle proof to the database
-        async fn write_merkle_proof(
+        /// Write a merkle tree to the database
+        async fn write_merkle_tree(
             &self,
-            request: tonic::Request<super::WriteMerkleProofRequest>,
+            request: tonic::Request<super::WriteMerkleTreeRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::WriteMerkleProofResponse>,
+            tonic::Response<super::WriteMerkleTreeResponse>,
             tonic::Status,
         >;
     }
@@ -630,25 +630,25 @@ pub mod aggregation_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aggregation.AggregationService/WriteMerkleProof" => {
+                "/aggregation.AggregationService/WriteMerkleTree" => {
                     #[allow(non_camel_case_types)]
-                    struct WriteMerkleProofSvc<T: AggregationService>(pub Arc<T>);
+                    struct WriteMerkleTreeSvc<T: AggregationService>(pub Arc<T>);
                     impl<
                         T: AggregationService,
-                    > tonic::server::UnaryService<super::WriteMerkleProofRequest>
-                    for WriteMerkleProofSvc<T> {
-                        type Response = super::WriteMerkleProofResponse;
+                    > tonic::server::UnaryService<super::WriteMerkleTreeRequest>
+                    for WriteMerkleTreeSvc<T> {
+                        type Response = super::WriteMerkleTreeResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::WriteMerkleProofRequest>,
+                            request: tonic::Request<super::WriteMerkleTreeRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as AggregationService>::write_merkle_proof(
+                                <T as AggregationService>::write_merkle_tree(
                                         &inner,
                                         request,
                                     )
@@ -663,7 +663,7 @@ pub mod aggregation_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = WriteMerkleProofSvc(inner);
+                        let method = WriteMerkleTreeSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

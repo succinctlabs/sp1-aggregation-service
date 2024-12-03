@@ -10,8 +10,8 @@ service AggregationService {
     rpc AggregateProof(AggregateProofRequest) returns (AggregateProofResponse) {}
     // Get a batch of proofs that have not yet been aggregated
     rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
-    // Write a merkle proof to the database
-    rpc WriteMerkleProof(WriteMerkleProofRequest) returns (WriteMerkleProofResponse) {}
+    // Write a merkle tree to the database
+    rpc WriteMerkleTree(WriteMerkleTreeRequest) returns (WriteMerkleTreeResponse) {}
 }
 
 message GetAggregatedDataRequest {
@@ -28,9 +28,9 @@ message GetAggregatedDataResponse {
 
 message AggregateProofRequest {
     // The proof to aggregate
-    string proof_uri = 1;
+    bytes proof = 1;
     // The corresponding vk
-    string vk_uri = 2;
+    bytes vk = 2;
 }
 
 message GetBatchRequest {
@@ -47,14 +47,14 @@ message GetBatchResponse {
     bytes batch_id = 2;
 }
 
-message WriteMerkleProofRequest {
+message WriteMerkleTreeRequest {
     // The merkle tree to write
     bytes tree = 1;
     // The identifier of the batch
     bytes batch_id = 2;
 }
 
-message WriteMerkleProofResponse {
+message WriteMerkleTreeResponse {
     // Indicates if the write was successful
     bool success = 1;
 }
@@ -66,9 +66,9 @@ message ProofRequest {
     // The aggregation status of the proof
     AggregationStatus status = 2;
     // The proof resourse identifier
-    string proof_uri = 3;
+    bytes proof = 3;
     // The corresponding vk resource identifier
-    string vk_uri = 4;
+    bytes vk = 4;
     // The unix timestamp of when the request was created
     uint64 created_at = 5;
 }
