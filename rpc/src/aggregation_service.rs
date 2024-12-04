@@ -4,9 +4,9 @@ use tonic::{Request, Response, Status};
 use types::{
     aggregation::{
         aggregation_service_server::AggregationService, AggregateProofRequest,
-        AggregateProofResponse, GetAggregatedDataRequest, GetAggregatedDataResponse,
-        GetBatchRequest, GetBatchResponse, ProofRequest, ResponseStatus, WriteMerkleTreeRequest,
-        WriteMerkleTreeResponse,
+        AggregateProofResponse, AggregationStatus, GetAggregatedDataRequest,
+        GetAggregatedDataResponse, GetBatchRequest, GetBatchResponse, ProcessBatchRequest,
+        ProcessBatchResponse, ResponseStatus, WriteMerkleTreeRequest, WriteMerkleTreeResponse,
     },
     merkle_tree::MerkleTree,
 };
@@ -19,15 +19,16 @@ impl AggregationService for AggregationRpc {
     ) -> Result<Response<GetAggregatedDataResponse>, Status> {
         let req = request.into_inner();
         let proof_id = req.proof_id;
+
         let merkle_tree_vec = db::get_merkle_tree(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-        // convert merkle tree from Vec<u8> to Vec<[u8; 32]>
         let merkle_tree_leaves = merkle_tree_vec
             .chunks(32)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
         let merkle_tree = MerkleTree::new(merkle_tree_leaves);
+
         let proof_leaf = db::get_leaf(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -37,11 +38,15 @@ impl AggregationService for AggregationRpc {
         let merkle_proof = merkle_tree
             .generate_proof(proof_leaf.as_slice().try_into().unwrap())
             .expect("Failed to generate proof");
-        //convert merkle proof to Vec<Vec<u8>>
         let merkle_proof_vec = merkle_proof.iter().map(|leaf| leaf.to_vec()).collect();
+
+        let mut response_status = ResponseStatus::UnspecifiedResponseStatus as i32;
+        if proof_status == AggregationStatus::Aggregated as i32 {
+            response_status = ResponseStatus::AggregationComplete as i32;
+        }
         Ok(Response::new(GetAggregatedDataResponse {
             proof: merkle_proof_vec,
-            status: proof_status,
+            status: response_status,
         }))
     }
 
@@ -75,6 +80,20 @@ impl AggregationService for AggregationRpc {
         Ok(Response::new(GetBatchResponse {
             batch_id: batch_id.to_vec(),
             proofs,
+        }))
+    }
+
+    async fn process_batch(
+        &self,
+        request: Request<ProcessBatchRequest>,
+    ) -> Result<Response<ProcessBatchResponse>, Status> {
+        let req = request.into_inner();
+        let batch_id = req.batch_id;
+        let leaves = db::process_batch(&self.db_pool, req.proofs, batch_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(ProcessBatchResponse {
+            leaves: leaves.to_vec(),
         }))
     }
 

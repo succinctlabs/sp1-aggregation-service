@@ -3,8 +3,6 @@ use eyre::Result;
 use sha2::{Digest, Sha256};
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use sqlx::{sqlite::SqlitePool, Row};
-use std::fs::File;
-use std::io::Read;
 use types::aggregation::{AggregationStatus, ProofRequest};
 
 pub async fn create_request(
@@ -99,4 +97,32 @@ pub async fn get_proof_status(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result
         .fetch_one(db_pool)
         .await?;
     Ok(proof_row.get::<i32, _>("status"))
+}
+
+pub async fn process_batch(
+    db_pool: &SqlitePool,
+    proofs: Vec<ProofRequest>,
+    batch_id: Vec<u8>,
+) -> Result<Vec<u8>, sqlx::Error> {
+    let mut leaves = Vec::new();
+    for request in proofs {
+        sqlx::query(r#"INSERT INTO batches (proof_id, batch_id) VALUES ($1, $2)"#)
+            .bind(request.proof_id.clone())
+            .bind(batch_id.clone())
+            .execute(db_pool)
+            .await?;
+        sqlx::query(r#"UPDATE requests SET status = 'AGGREGATED' WHERE proof_id = $1"#)
+            .bind(request.proof_id.clone())
+            .execute(db_pool)
+            .await?;
+        let leaf = get_leaf(db_pool, request.proof_id).await?;
+        leaves.push(leaf);
+    }
+
+    let leaves_vec = leaves
+        .iter()
+        .map(|l| l.to_vec())
+        .collect::<Vec<Vec<u8>>>()
+        .concat();
+    Ok(leaves_vec)
 }

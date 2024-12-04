@@ -2,9 +2,7 @@ use dotenv::dotenv;
 use rpc::{new_db, AggregationRpc};
 use sqlx::SqlitePool;
 use tonic::transport::Server;
-use types::aggregation::{
-    aggregation_service_server::AggregationServiceServer, GetBatchRequest, GetBatchResponse,
-};
+use types::aggregation::aggregation_service_server::AggregationServiceServer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

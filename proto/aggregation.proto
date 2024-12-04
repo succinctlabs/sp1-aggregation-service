@@ -12,6 +12,8 @@ service AggregationService {
     rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
     // Write a merkle tree to the database
     rpc WriteMerkleTree(WriteMerkleTreeRequest) returns (WriteMerkleTreeResponse) {}
+    // Process a batch of proofs
+    rpc ProcessBatch(ProcessBatchRequest) returns (ProcessBatchResponse) {}
 }
 
 message GetAggregatedDataRequest {
@@ -45,6 +47,18 @@ message GetBatchResponse {
     repeated ProofRequest proofs = 1;
     // The identifier of the batch
     bytes batch_id = 2;
+}
+
+message ProcessBatchRequest {
+    // The list of proof requests to process
+    repeated ProofRequest proofs = 1;
+    // The identifier of the batch
+    bytes batch_id = 2;
+}
+
+message ProcessBatchResponse {
+    // The leaves of the merkle tree generated from the batch
+    bytes leaves = 1;
 }
 
 message WriteMerkleTreeRequest {
