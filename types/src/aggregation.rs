@@ -18,6 +18,20 @@ pub struct GetAggregatedDataResponse {
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAggregationStatusRequest {
+    /// The proof id to get the aggregation status for
+    #[prost(bytes = "vec", tag = "1")]
+    pub proof_id: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct GetAggregationStatusResponse {
+    /// The aggregation status of the proof
+    #[prost(enumeration = "AggregationStatus", tag = "1")]
+    pub status: i32,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AggregateProofRequest {
     /// The proof to aggregate
     #[prost(bytes = "vec", tag = "1")]
@@ -30,8 +44,8 @@ pub struct AggregateProofRequest {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetBatchRequest {
     /// The unix timestamp to get all proof requests created after
-    #[prost(uint64, tag = "1")]
-    pub created_after: u64,
+    #[prost(uint64, optional, tag = "1")]
+    pub created_after: ::core::option::Option<u64>,
     /// The number of proofs to return (default is 32)
     #[prost(uint64, optional, tag = "2")]
     pub batch_size: ::core::option::Option<u64>,
@@ -77,6 +91,23 @@ pub struct WriteMerkleTreeRequest {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct WriteMerkleTreeResponse {
     /// Indicates if the write was successful
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateBatchStatusRequest {
+    /// The identifier of the batch
+    #[prost(bytes = "vec", tag = "1")]
+    pub batch_id: ::prost::alloc::vec::Vec<u8>,
+    /// The status of the batch
+    #[prost(enumeration = "AggregationStatus", tag = "2")]
+    pub status: i32,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UpdateBatchStatusResponse {
+    /// Indicates if the update was successful
     #[prost(bool, tag = "1")]
     pub success: bool,
 }
@@ -152,12 +183,14 @@ impl AggregationStatus {
 #[repr(i32)]
 pub enum ResponseStatus {
     UnspecifiedResponseStatus = 0,
-    /// Proof hash was not found
+    /// Proof was not found
     NotFound = 1,
-    /// Proof hash was found but not yet aggregated
+    /// Proof was found but not yet aggregated
     AggregationPending = 2,
-    /// Proof hash was found and aggregated
+    /// Proof was found and aggregated but not yet verified
     AggregationComplete = 3,
+    /// Proof was found and aggregation was verified
+    AggregationVerified = 4,
 }
 impl ResponseStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -170,6 +203,7 @@ impl ResponseStatus {
             Self::NotFound => "NOT_FOUND",
             Self::AggregationPending => "AGGREGATION_PENDING",
             Self::AggregationComplete => "AGGREGATION_COMPLETE",
+            Self::AggregationVerified => "AGGREGATION_VERIFIED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -179,6 +213,7 @@ impl ResponseStatus {
             "NOT_FOUND" => Some(Self::NotFound),
             "AGGREGATION_PENDING" => Some(Self::AggregationPending),
             "AGGREGATION_COMPLETE" => Some(Self::AggregationComplete),
+            "AGGREGATION_VERIFIED" => Some(Self::AggregationVerified),
             _ => None,
         }
     }
@@ -304,6 +339,36 @@ pub mod aggregation_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /// Get the aggregation status of a given proof
+        pub async fn get_aggregation_status(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAggregationStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetAggregationStatusResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/aggregation.AggregationService/GetAggregationStatus",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "aggregation.AggregationService",
+                        "GetAggregationStatus",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /// Creates an aggregation request
         pub async fn aggregate_proof(
             &mut self,
@@ -410,6 +475,36 @@ pub mod aggregation_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /// Update status of batch of proofs
+        pub async fn update_batch_status(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateBatchStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateBatchStatusResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/aggregation.AggregationService/UpdateBatchStatus",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "aggregation.AggregationService",
+                        "UpdateBatchStatus",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -431,6 +526,14 @@ pub mod aggregation_service_server {
             request: tonic::Request<super::GetAggregatedDataRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetAggregatedDataResponse>,
+            tonic::Status,
+        >;
+        /// Get the aggregation status of a given proof
+        async fn get_aggregation_status(
+            &self,
+            request: tonic::Request<super::GetAggregationStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetAggregationStatusResponse>,
             tonic::Status,
         >;
         /// Creates an aggregation request
@@ -463,6 +566,14 @@ pub mod aggregation_service_server {
             request: tonic::Request<super::ProcessBatchRequest>,
         ) -> std::result::Result<
             tonic::Response<super::ProcessBatchResponse>,
+            tonic::Status,
+        >;
+        /// Update status of batch of proofs
+        async fn update_batch_status(
+            &self,
+            request: tonic::Request<super::UpdateBatchStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateBatchStatusResponse>,
             tonic::Status,
         >;
     }
@@ -576,6 +687,55 @@ pub mod aggregation_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetAggregatedDataSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/aggregation.AggregationService/GetAggregationStatus" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAggregationStatusSvc<T: AggregationService>(pub Arc<T>);
+                    impl<
+                        T: AggregationService,
+                    > tonic::server::UnaryService<super::GetAggregationStatusRequest>
+                    for GetAggregationStatusSvc<T> {
+                        type Response = super::GetAggregationStatusResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAggregationStatusRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AggregationService>::get_aggregation_status(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetAggregationStatusSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -762,6 +922,55 @@ pub mod aggregation_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ProcessBatchSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/aggregation.AggregationService/UpdateBatchStatus" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateBatchStatusSvc<T: AggregationService>(pub Arc<T>);
+                    impl<
+                        T: AggregationService,
+                    > tonic::server::UnaryService<super::UpdateBatchStatusRequest>
+                    for UpdateBatchStatusSvc<T> {
+                        type Response = super::UpdateBatchStatusResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateBatchStatusRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AggregationService>::update_batch_status(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateBatchStatusSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

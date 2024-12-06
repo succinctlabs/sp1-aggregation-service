@@ -1,11 +1,10 @@
 [package]
-version = "0.1.0"
 name = "aggregation-program"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-alloy-sol-types = { workspace = true }
-sp1-zkvm = { version = "3.0.0", features = ["verify"] }
 sha2 = "0.10.8"
+sp1-zkvm = { version = "3.0.0", features = ["verify"] }
 alloy-merkle-tree = "0.7.1"
 alloy = "0.6.4"

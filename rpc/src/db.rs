@@ -3,7 +3,7 @@ use eyre::Result;
 use sha2::{Digest, Sha256};
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use sqlx::{sqlite::SqlitePool, Row};
-use types::aggregation::{AggregationStatus, ProofRequest};
+use types::aggregation::{AggregationStatus, ProofRequest, ResponseStatus};
 
 pub async fn create_request(
     db_pool: &SqlitePool,
@@ -14,7 +14,7 @@ pub async fn create_request(
     let pending_status = AggregationStatus::Pending;
     let created_at = Utc::now().timestamp_millis();
     sqlx::query(
-        r#"INSERT INTO requests (proof_id, proof_uri, vk_uri, status, created_at) VALUES ($1, $2, $3, $4, $5)"#,
+        r#"INSERT INTO requests (proof_id, proof, vk, status, created_at) VALUES ($1, $2, $3, $4, $5)"#,
     )
     .bind(proof_id)
     .bind(proof)
@@ -32,7 +32,7 @@ pub async fn get_batch(
     created_after: u64,
     batch_size: u64,
 ) -> Result<Vec<ProofRequest>, sqlx::Error> {
-    let request_rows = sqlx::query(r#"SELECT * FROM requests WHERE created_at > $1 AND aggregation_status = 'PENDING' LIMIT $2"#)
+    let request_rows = sqlx::query(r#"SELECT * FROM requests WHERE created_at > $1 AND aggregation_status = 'PENDING' ORDER BY created_at ASC LIMIT $2"#)
         .bind(created_after as i64)
         .bind(batch_size as i64)
         .fetch_all(db_pool)
@@ -95,8 +95,32 @@ pub async fn get_proof_status(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result
     let proof_row = sqlx::query(r#"SELECT status FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
-        .await?;
-    Ok(proof_row.get::<i32, _>("status"))
+        .await;
+
+    // Check if the proof_row was found
+    match proof_row {
+        Ok(row) => {
+            let aggregation_status = row.get::<i32, _>("status");
+            let response_status = match aggregation_status {
+                status if status == AggregationStatus::Pending as i32 => {
+                    Ok(ResponseStatus::AggregationPending)
+                }
+                status if status == AggregationStatus::Aggregated as i32 => {
+                    Ok(ResponseStatus::AggregationComplete)
+                }
+                status if status == AggregationStatus::Verified as i32 => {
+                    Ok(ResponseStatus::AggregationVerified)
+                }
+                _ => Err("Invalid aggregation status"), // Return an error for unexpected status
+            }
+            .unwrap();
+            Ok(response_status as i32)
+        }
+        Err(_) => {
+            // If proof not found, set response status to NotFound
+            Ok(ResponseStatus::NotFound as i32)
+        }
+    }
 }
 
 pub async fn process_batch(
@@ -125,4 +149,30 @@ pub async fn process_batch(
         .collect::<Vec<Vec<u8>>>()
         .concat();
     Ok(leaves_vec)
+}
+
+pub async fn update_batch_status(
+    db_pool: &SqlitePool,
+    batch_id: Vec<u8>,
+    status: i32,
+) -> Result<(), sqlx::Error> {
+    // find all proof_ids in batch
+    let rows = sqlx::query(r#"SELECT proof_id FROM batches WHERE batch_id = $1"#)
+        .bind(batch_id)
+        .fetch_all(db_pool)
+        .await?;
+    let proof_ids = rows
+        .iter()
+        .map(|r| r.get::<&[u8], _>("proof_id").to_vec())
+        .collect::<Vec<Vec<u8>>>();
+    // update status for each proof_id
+    for proof_id in proof_ids {
+        sqlx::query(r#"UPDATE requests SET status = $1 WHERE proof_id = $2"#)
+            .bind(status)
+            .bind(proof_id)
+            .execute(db_pool)
+            .await?;
+    }
+
+    Ok(())
 }

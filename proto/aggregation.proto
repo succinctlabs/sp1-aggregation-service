@@ -6,6 +6,8 @@ package aggregation;
 service AggregationService {
     // Get the merkle proof for a given proof
     rpc GetAggregatedData(GetAggregatedDataRequest) returns (GetAggregatedDataResponse) {}
+    // Get the aggregation status of a given proof
+    rpc GetAggregationStatus(GetAggregationStatusRequest) returns (GetAggregationStatusResponse) {}
     // Creates an aggregation request
     rpc AggregateProof(AggregateProofRequest) returns (AggregateProofResponse) {}
     // Get a batch of proofs that have not yet been aggregated
@@ -14,6 +16,8 @@ service AggregationService {
     rpc WriteMerkleTree(WriteMerkleTreeRequest) returns (WriteMerkleTreeResponse) {}
     // Process a batch of proofs
     rpc ProcessBatch(ProcessBatchRequest) returns (ProcessBatchResponse) {}
+    // Update status of batch of proofs
+    rpc UpdateBatchStatus(UpdateBatchStatusRequest) returns (UpdateBatchStatusResponse) {}
 }
 
 message GetAggregatedDataRequest {
@@ -28,6 +32,16 @@ message GetAggregatedDataResponse {
     ResponseStatus status = 2;
 }
 
+message GetAggregationStatusRequest {
+    // The proof id to get the aggregation status for
+    bytes proof_id = 1;
+}
+
+message GetAggregationStatusResponse {
+    // The aggregation status of the proof
+    AggregationStatus status = 1;
+}
+
 message AggregateProofRequest {
     // The proof to aggregate
     bytes proof = 1;
@@ -37,7 +51,7 @@ message AggregateProofRequest {
 
 message GetBatchRequest {
     // The unix timestamp to get all proof requests created after
-    uint64 created_after = 1;
+    optional uint64 created_after = 1;
     // The number of proofs to return (default is 32)
     optional uint64 batch_size = 2;
 }
@@ -73,6 +87,17 @@ message WriteMerkleTreeResponse {
     bool success = 1;
 }
 
+message UpdateBatchStatusRequest {
+    // The identifier of the batch
+    bytes batch_id = 1;
+    // The status of the batch
+    AggregationStatus status = 2;
+}
+
+message UpdateBatchStatusResponse {
+    // Indicates if the update was successful
+    bool success = 1;
+}
 
 message ProofRequest {
     // The identifier of the proof
@@ -106,10 +131,12 @@ enum AggregationStatus {
 
 enum ResponseStatus {
     UNSPECIFIED_RESPONSE_STATUS = 0;
-    // Proof hash was not found
+    // Proof was not found
     NOT_FOUND = 1;
-    // Proof hash was found but not yet aggregated  
+    // Proof was found but not yet aggregated  
     AGGREGATION_PENDING = 2;
-    // Proof hash was found and aggregated
+    // Proof was found and aggregated but not yet verified
     AGGREGATION_COMPLETE = 3;
+    // Proof was found and aggregation was verified
+    AGGREGATION_VERIFIED = 4;
 }

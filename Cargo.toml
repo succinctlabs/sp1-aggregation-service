@@ -1,11 +1,18 @@
 [workspace]
 members = [
-    "lib",
-    "program", "rpc",
-    "script", "service", "types",
+    "lib", "programs/aggregation-program",
+    "programs/fibonacci-program",
+    "rpc",
+    "script",
+    "types",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 alloy-sol-types = "0.7.7"
 types = { path = "types" }
+rpc = { path = "rpc" }
+sp1-sdk = "3.0.0"
+sp1-build = "3.0.0"
+serde = "1.0"
+serde_json = "1.0"

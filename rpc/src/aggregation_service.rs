@@ -4,9 +4,11 @@ use tonic::{Request, Response, Status};
 use types::{
     aggregation::{
         aggregation_service_server::AggregationService, AggregateProofRequest,
-        AggregateProofResponse, AggregationStatus, GetAggregatedDataRequest,
-        GetAggregatedDataResponse, GetBatchRequest, GetBatchResponse, ProcessBatchRequest,
-        ProcessBatchResponse, ResponseStatus, WriteMerkleTreeRequest, WriteMerkleTreeResponse,
+        AggregateProofResponse, GetAggregatedDataRequest, GetAggregatedDataResponse,
+        GetAggregationStatusRequest, GetAggregationStatusResponse, GetBatchRequest,
+        GetBatchResponse, ProcessBatchRequest, ProcessBatchResponse, ResponseStatus,
+        UpdateBatchStatusRequest, UpdateBatchStatusResponse, WriteMerkleTreeRequest,
+        WriteMerkleTreeResponse,
     },
     merkle_tree::MerkleTree,
 };
@@ -20,6 +22,17 @@ impl AggregationService for AggregationRpc {
         let req = request.into_inner();
         let proof_id = req.proof_id;
 
+        // if proof_id is not found (not in db), return empty vector and status NOT_FOUND
+        let response_status = db::get_proof_status(&self.db_pool, proof_id.clone())
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        if response_status == ResponseStatus::NotFound as i32 {
+            return Ok(Response::new(GetAggregatedDataResponse {
+                proof: vec![],
+                status: ResponseStatus::NotFound as i32,
+            }));
+        }
+
         let merkle_tree_vec = db::get_merkle_tree(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -32,22 +45,30 @@ impl AggregationService for AggregationRpc {
         let proof_leaf = db::get_leaf(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-        let proof_status = db::get_proof_status(&self.db_pool, proof_id.clone())
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
+        // let proof_status = db::get_proof_status(&self.db_pool, proof_id.clone())
+        //     .await
+        //     .map_err(|e| Status::internal(e.to_string()))?;
         let merkle_proof = merkle_tree
             .generate_proof(proof_leaf.as_slice().try_into().unwrap())
             .expect("Failed to generate proof");
         let merkle_proof_vec = merkle_proof.iter().map(|leaf| leaf.to_vec()).collect();
 
-        let mut response_status = ResponseStatus::UnspecifiedResponseStatus as i32;
-        if proof_status == AggregationStatus::Aggregated as i32 {
-            response_status = ResponseStatus::AggregationComplete as i32;
-        }
         Ok(Response::new(GetAggregatedDataResponse {
             proof: merkle_proof_vec,
             status: response_status,
         }))
+    }
+
+    async fn get_aggregation_status(
+        &self,
+        request: Request<GetAggregationStatusRequest>,
+    ) -> Result<Response<GetAggregationStatusResponse>, Status> {
+        let req = request.into_inner();
+        let proof_id = req.proof_id;
+        let status = db::get_proof_status(&self.db_pool, proof_id.clone())
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(GetAggregationStatusResponse { status }))
     }
 
     async fn aggregate_proof(
@@ -72,7 +93,7 @@ impl AggregationService for AggregationRpc {
         let batch_id: [u8; 32] = rand::thread_rng().gen();
         let proofs = db::get_batch(
             &self.db_pool,
-            req.created_after,
+            req.created_after.unwrap_or(0),
             req.batch_size.unwrap_or(32),
         )
         .await
@@ -108,5 +129,16 @@ impl AggregationService for AggregationRpc {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(WriteMerkleTreeResponse { success: true }))
+    }
+
+    async fn update_batch_status(
+        &self,
+        request: Request<UpdateBatchStatusRequest>,
+    ) -> Result<Response<UpdateBatchStatusResponse>, Status> {
+        let req = request.into_inner();
+        db::update_batch_status(&self.db_pool, req.batch_id, req.status)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(UpdateBatchStatusResponse { success: true }))
     }
 }
