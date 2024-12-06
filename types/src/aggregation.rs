@@ -112,6 +112,7 @@ pub struct UpdateBatchStatusResponse {
     pub success: bool,
 }
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(sqlx::FromRow)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ProofRequest {
     /// The identifier of the proof
@@ -179,6 +180,7 @@ impl AggregationStatus {
     }
 }
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(sqlx::Type)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ResponseStatus {

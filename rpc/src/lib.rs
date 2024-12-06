@@ -1,12 +1,13 @@
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 mod aggregation_service;
 mod db;
+mod tests;
 use eyre::Result;
 use std::{
     net::TcpListener,
     sync::atomic::{AtomicU16, Ordering},
 };
-use tonic::transport::Server;
+use tonic::{codec::CompressionEncoding, transport::Server};
 use tracing::error;
 use types::aggregation::aggregation_service_server::AggregationServiceServer;
 
@@ -32,8 +33,11 @@ pub async fn start(db_pool: SqlitePool, addr: String) -> Result<()> {
 
     println!("Starting RPC server on {}", addr);
 
-    let rpc_server =
-        Server::builder().add_service(AggregationServiceServer::new(aggregation_rpc.clone()));
+    let aggregation_server = AggregationServiceServer::new(aggregation_rpc.clone())
+        .max_decoding_message_size(1024 * 1024 * 1024)
+        .max_encoding_message_size(1024 * 1024 * 1024);
+
+    let rpc_server = Server::builder().add_service(aggregation_server);
 
     tokio::select! {
         result = rpc_server.serve(grpc_addr) => {
@@ -66,6 +70,8 @@ pub async fn start_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
     //     }
     // });
     start(db_pool, grpc_addr).await?;
+    // Give the server a moment to start up.
+    // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
     Ok(addr)
 }

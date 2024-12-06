@@ -32,21 +32,20 @@ pub async fn get_batch(
     created_after: u64,
     batch_size: u64,
 ) -> Result<Vec<ProofRequest>, sqlx::Error> {
-    let request_rows = sqlx::query(r#"SELECT * FROM requests WHERE created_at > $1 AND aggregation_status = 'PENDING' ORDER BY created_at ASC LIMIT $2"#)
-        .bind(created_after as i64)
-        .bind(batch_size as i64)
-        .fetch_all(db_pool)
-        .await?;
-    let requests = request_rows
-        .iter()
-        .map(|r| ProofRequest {
-            proof_id: r.get::<&[u8], _>("proof_id").to_vec(),
-            status: r.get::<i32, _>("status"),
-            proof: r.get::<&[u8], _>("proof").to_vec(),
-            vk: r.get::<&[u8], _>("vk").to_vec(),
-            created_at: r.get::<i64, _>("created_at") as u64,
-        })
-        .collect();
+    let pending_status = AggregationStatus::Pending as i32;
+    let requests: Vec<ProofRequest> = sqlx::query_as::<_, ProofRequest>(
+        r#"SELECT proof_id, status, proof, vk, created_at
+           FROM requests
+           WHERE created_at > $1 AND status = $2
+           ORDER BY created_at ASC
+           LIMIT $3"#,
+    )
+    .bind(created_after as i64)
+    .bind(pending_status)
+    .bind(batch_size as i64)
+    .fetch_all(db_pool)
+    .await
+    .expect("Failed to get batch.");
     Ok(requests)
 }
 
@@ -79,7 +78,7 @@ pub async fn get_merkle_tree(
     Ok(tree.get::<&[u8], _>("tree").to_vec())
 }
 pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>, sqlx::Error> {
-    let proof_row = sqlx::query(r#"SELECT proof FROM requests WHERE proof_id = $1"#)
+    let proof_row = sqlx::query(r#"SELECT proof, vk FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
         .await?;
@@ -129,13 +128,15 @@ pub async fn process_batch(
     batch_id: Vec<u8>,
 ) -> Result<Vec<u8>, sqlx::Error> {
     let mut leaves = Vec::new();
+    let aggregated_status = AggregationStatus::Aggregated as i32;
     for request in proofs {
         sqlx::query(r#"INSERT INTO batches (proof_id, batch_id) VALUES ($1, $2)"#)
             .bind(request.proof_id.clone())
             .bind(batch_id.clone())
             .execute(db_pool)
             .await?;
-        sqlx::query(r#"UPDATE requests SET status = 'AGGREGATED' WHERE proof_id = $1"#)
+        sqlx::query(r#"UPDATE requests SET status = $1 WHERE proof_id = $2"#)
+            .bind(aggregated_status)
             .bind(request.proof_id.clone())
             .execute(db_pool)
             .await?;
@@ -171,7 +172,8 @@ pub async fn update_batch_status(
             .bind(status)
             .bind(proof_id)
             .execute(db_pool)
-            .await?;
+            .await
+            .expect("Failed to update requests.");
     }
 
     Ok(())
