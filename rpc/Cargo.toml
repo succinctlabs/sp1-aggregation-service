@@ -13,6 +13,7 @@ rand = "0.8.5"
 types = { workspace = true }
 chrono = "0.4.38"
 sha2 = "0.10.6"
+bincode = "1.3.3"
 # rpc = { path = "../" }
 
 sp1-sdk = { workspace = true }

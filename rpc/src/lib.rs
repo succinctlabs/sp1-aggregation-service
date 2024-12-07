@@ -7,7 +7,7 @@ use std::{
     net::TcpListener,
     sync::atomic::{AtomicU16, Ordering},
 };
-use tonic::{codec::CompressionEncoding, transport::Server};
+use tonic::transport::Server;
 use tracing::error;
 use types::aggregation::aggregation_service_server::AggregationServiceServer;
 
@@ -53,6 +53,28 @@ pub async fn start(db_pool: SqlitePool, addr: String) -> Result<()> {
     Ok(())
 }
 
+pub async fn start_test_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
+    let port = loop {
+        let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            break port;
+        }
+    };
+    let addr = format!("127.0.0.1:{}", port);
+    let grpc_addr = addr.clone();
+
+    tokio::spawn(async move {
+        if let Err(e) = start(db_pool, grpc_addr).await {
+            eprintln!("error starting server: {:?}", e);
+        }
+    });
+
+    // Give the server a moment to start up.
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    Ok(addr)
+}
+
 pub async fn start_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
     let port = loop {
         let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -62,16 +84,7 @@ pub async fn start_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
     };
     let addr = format!("127.0.0.1:{}", port);
     let grpc_addr = addr.clone();
-    // println!("Starting RPC server on {}", grpc_addr);
-    // tokio::spawn(async move {
-    //     // println!("Starting RPC server on {}", grpc_addr);
-    //     if let Err(e) = start(db_pool, grpc_addr).await {
-    //         eprintln!("error starting server: {:?}", e);
-    //     }
-    // });
     start(db_pool, grpc_addr).await?;
-    // Give the server a moment to start up.
-    // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
     Ok(addr)
 }

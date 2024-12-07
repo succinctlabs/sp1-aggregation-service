@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use eyre::Result;
 // use rpc::start_rpc_server;
-use crate::start_rpc_server;
+use crate::start_test_rpc_server;
 use sqlx::{sqlite::SqlitePool, Row};
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregateProofRequest, AggregationStatus,
@@ -12,7 +12,7 @@ use types::aggregation::{
 #[sqlx::test(migrations = "./migrations")]
 async fn test_aggregate_proof(db_pool: SqlitePool) -> Result<()> {
     dotenv().ok();
-    let rpc_addr = start_rpc_server(db_pool).await?;
+    let rpc_addr = start_test_rpc_server(db_pool).await?;
     println!("Connecting to RPC server at {}", rpc_addr);
     let mut network_client = AggregationServiceClient::connect(format!("https://{}", rpc_addr))
         .await
@@ -45,7 +45,7 @@ async fn test_aggregate_proof(db_pool: SqlitePool) -> Result<()> {
 #[sqlx::test(migrations = "./migrations")]
 async fn test_e2e(db_pool: SqlitePool) -> Result<()> {
     dotenv().ok();
-    let rpc_addr = std::env::var("RPC_GRPC_ADDR").unwrap();
+    let rpc_addr = start_test_rpc_server(db_pool).await?;
     println!("Connecting to RPC server at {}", rpc_addr);
     let mut network_client = AggregationServiceClient::connect(format!("https://{}", rpc_addr))
         .await

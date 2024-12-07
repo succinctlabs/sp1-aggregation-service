@@ -85,9 +85,9 @@ pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>
         .fetch_one(db_pool)
         .await?;
     let proof_bytes = proof_row.get::<&[u8], _>("proof").to_vec();
-    let proof: SP1ProofWithPublicValues = serde_json::from_slice(&proof_bytes).unwrap();
+    let proof: SP1ProofWithPublicValues = bincode::deserialize(&proof_bytes).unwrap();
     let vk_bytes = proof_row.get::<&[u8], _>("vk").to_vec();
-    let vk: SP1VerifyingKey = serde_json::from_slice(&vk_bytes).unwrap();
+    let vk: SP1VerifyingKey = bincode::deserialize(&vk_bytes).unwrap();
     let public_values = proof.public_values;
     let leaf = Sha256::digest([public_values.as_slice(), &vk.hash_bytes()].concat());
     Ok(leaf.to_vec())

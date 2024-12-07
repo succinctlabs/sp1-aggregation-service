@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
     println!("Connected to RPC server");
     let (pk, vk) = client.setup(FIBONACCI_ELF);
-    let vk_serialized = serde_json::to_vec(&vk).unwrap();
+    let vk_serialized = bincode::serialize(&vk).unwrap();
 
     // sp1_sdk::utils::setup_logger();
     let n_values = vec![10, 20, 30, 40, 50];
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .compressed()
             .run()
             .expect("proving failed");
-        let proof_serialized = serde_json::to_vec(&proof).unwrap();
+        let proof_serialized = bincode::serialize(&proof).unwrap();
         println!("Sending proof request to RPC server");
         let response = network
             .aggregate_proof(AggregateProofRequest {
