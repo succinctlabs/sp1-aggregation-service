@@ -127,8 +127,11 @@ pub struct ProofRequest {
     /// The corresponding vk resource identifier
     #[prost(bytes = "vec", tag = "4")]
     pub vk: ::prost::alloc::vec::Vec<u8>,
+    /// The batch id of the proof (null when not aggregated)
+    #[prost(bytes = "vec", optional, tag = "5")]
+    pub batch_id: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
     /// The unix timestamp of when the request was created
-    #[prost(uint64, tag = "5")]
+    #[prost(uint64, tag = "6")]
     pub created_at: u64,
 }
 #[derive(serde::Serialize, serde::Deserialize)]

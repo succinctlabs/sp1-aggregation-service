@@ -14,12 +14,13 @@ pub async fn create_request(
     let pending_status = AggregationStatus::Pending;
     let created_at = Utc::now().timestamp_millis();
     sqlx::query(
-        r#"INSERT INTO requests (proof_id, proof, vk, status, created_at) VALUES ($1, $2, $3, $4, $5)"#,
+        r#"INSERT INTO requests (proof_id, status, proof, vk, batch_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"#,
     )
     .bind(proof_id)
+    .bind(pending_status)
     .bind(proof)
     .bind(vk)
-    .bind(pending_status)
+    .bind::<Option<Vec<u8>>>(None)
     .bind(created_at)
     .execute(db_pool)
     .await?;
@@ -34,7 +35,7 @@ pub async fn get_batch(
 ) -> Result<Vec<ProofRequest>, sqlx::Error> {
     let pending_status = AggregationStatus::Pending as i32;
     let requests: Vec<ProofRequest> = sqlx::query_as::<_, ProofRequest>(
-        r#"SELECT proof_id, status, proof, vk, created_at
+        r#"SELECT proof_id, status, proof, vk, batch_id, created_at
            FROM requests
            WHERE created_at > $1 AND status = $2
            ORDER BY created_at ASC
@@ -65,11 +66,12 @@ pub async fn get_merkle_tree(
     db_pool: &SqlitePool,
     proof_id: Vec<u8>,
 ) -> Result<Vec<u8>, sqlx::Error> {
-    let batch_row = sqlx::query(r#"SELECT batch_id FROM batches WHERE proof_id = $1"#)
+    let batch_row = sqlx::query(r#"SELECT batch_id FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
         .await?;
     let batch_id = batch_row.get::<&[u8], _>("batch_id").to_vec();
+    // let batch_row = sqlx::query
 
     let tree = sqlx::query(r#"SELECT tree FROM merkle_trees WHERE batch_id = $1"#)
         .bind(batch_id)
@@ -130,13 +132,13 @@ pub async fn process_batch(
     let mut leaves = Vec::new();
     let aggregated_status = AggregationStatus::Aggregated as i32;
     for request in proofs {
-        sqlx::query(r#"INSERT INTO batches (proof_id, batch_id) VALUES ($1, $2)"#)
-            .bind(request.proof_id.clone())
-            .bind(batch_id.clone())
-            .execute(db_pool)
-            .await?;
         sqlx::query(r#"UPDATE requests SET status = $1 WHERE proof_id = $2"#)
             .bind(aggregated_status)
+            .bind(request.proof_id.clone())
+            .execute(db_pool)
+            .await?;
+        sqlx::query(r#"UPDATE requests SET batch_id = $1 WHERE proof_id = $2"#)
+            .bind(batch_id.clone())
             .bind(request.proof_id.clone())
             .execute(db_pool)
             .await?;
@@ -158,7 +160,7 @@ pub async fn update_batch_status(
     status: i32,
 ) -> Result<(), sqlx::Error> {
     // find all proof_ids in batch
-    let rows = sqlx::query(r#"SELECT proof_id FROM batches WHERE batch_id = $1"#)
+    let rows = sqlx::query(r#"SELECT proof_id FROM requests WHERE batch_id = $1"#)
         .bind(batch_id)
         .fetch_all(db_pool)
         .await?;

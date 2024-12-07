@@ -5,8 +5,8 @@ use crate::start_rpc_server;
 use sqlx::{sqlite::SqlitePool, Row};
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregateProofRequest, AggregationStatus,
-    GetAggregationStatusRequest, GetBatchRequest, ProcessBatchRequest, ResponseStatus,
-    UpdateBatchStatusRequest, WriteMerkleTreeRequest,
+    GetAggregatedDataRequest, GetAggregationStatusRequest, GetBatchRequest, ProcessBatchRequest,
+    ResponseStatus, UpdateBatchStatusRequest, WriteMerkleTreeRequest,
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -98,6 +98,22 @@ async fn test_e2e(db_pool: SqlitePool) -> Result<()> {
         tree: leaves,
         batch_id: batch_id.clone(),
     };
+
+    network_client
+        .write_merkle_tree(merkle_tree_request)
+        .await?
+        .into_inner();
+
+    let aggregated_data_request = GetAggregatedDataRequest {
+        proof_id: proof_ids[0].clone(),
+    };
+
+    let aggregated_data_response = network_client
+        .get_aggregated_data(aggregated_data_request)
+        .await?
+        .into_inner();
+    let merkle_proof = aggregated_data_response.proof;
+    println!("Merkle proof: {:?}", merkle_proof);
 
     Ok(())
 }
