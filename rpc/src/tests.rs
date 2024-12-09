@@ -2,7 +2,7 @@ use dotenv::dotenv;
 use eyre::Result;
 // use rpc::start_rpc_server;
 use crate::start_test_rpc_server;
-use sqlx::{postgres::PgPool, Row};
+use sqlx::postgres::PgPool;
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregateProofRequest, AggregationStatus,
     AggregationStatusResponse, GetAggregatedDataRequest, GetAggregationStatusRequest,
