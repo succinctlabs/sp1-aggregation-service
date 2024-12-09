@@ -4,9 +4,9 @@ use tonic::{Request, Response, Status};
 use types::{
     aggregation::{
         aggregation_service_server::AggregationService, AggregateProofRequest,
-        AggregateProofResponse, GetAggregatedDataRequest, GetAggregatedDataResponse,
-        GetAggregationStatusRequest, GetAggregationStatusResponse, GetBatchRequest,
-        GetBatchResponse, ProcessBatchRequest, ProcessBatchResponse, ResponseStatus,
+        AggregateProofResponse, AggregationStatusResponse, GetAggregatedDataRequest,
+        GetAggregatedDataResponse, GetAggregationStatusRequest, GetAggregationStatusResponse,
+        GetBatchRequest, GetBatchResponse, ProcessBatchRequest, ProcessBatchResponse,
         UpdateBatchStatusRequest, UpdateBatchStatusResponse, WriteMerkleTreeRequest,
         WriteMerkleTreeResponse,
     },
@@ -33,10 +33,13 @@ impl AggregationService for AggregationRpc {
         let response_status = db::get_proof_status(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-        if response_status == ResponseStatus::NotFound {
+        if response_status == AggregationStatusResponse::NotFound {
             return Ok(Response::new(GetAggregatedDataResponse {
                 proof: vec![],
-                status: ResponseStatus::NotFound as i32,
+                status: AggregationStatusResponse::NotFound as i32,
+                tx_hash: vec![],
+                chain_id: 0,
+                contract_address: vec![],
             }));
         }
 

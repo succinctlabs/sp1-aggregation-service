@@ -3,7 +3,7 @@ use eyre::Result;
 use sha2::{Digest, Sha256};
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
 use sqlx::{sqlite::SqlitePool, Row};
-use types::aggregation::{AggregationStatus, ProofRequest, ResponseStatus};
+use types::aggregation::{AggregationStatus, AggregationStatusResponse, ProofRequest};
 
 pub async fn create_request(
     db_pool: &SqlitePool,
@@ -23,7 +23,7 @@ pub async fn create_request(
     .bind::<Option<Vec<u8>>>(None)
     .bind(created_at)
     .bind::<Option<Vec<u8>>>(None)
-    .bind::<Option<u64>>(None)
+    .bind::<Option<i64>>(None)
     .bind::<Option<Vec<u8>>>(None)
     .execute(db_pool)
     .await?;
@@ -98,7 +98,7 @@ pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>
 pub async fn get_proof_status(
     db_pool: &SqlitePool,
     proof_id: Vec<u8>,
-) -> Result<ResponseStatus, sqlx::Error> {
+) -> Result<AggregationStatusResponse, sqlx::Error> {
     let proof_row = sqlx::query(r#"SELECT status FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
@@ -110,13 +110,13 @@ pub async fn get_proof_status(
             let aggregation_status = row.get::<i32, _>("status");
             let response_status = match aggregation_status {
                 status if status == AggregationStatus::Pending as i32 => {
-                    Ok(ResponseStatus::AggregationPending)
+                    Ok(AggregationStatusResponse::AggregationPending)
                 }
                 status if status == AggregationStatus::Aggregated as i32 => {
-                    Ok(ResponseStatus::AggregationComplete)
+                    Ok(AggregationStatusResponse::AggregationComplete)
                 }
                 status if status == AggregationStatus::Verified as i32 => {
-                    Ok(ResponseStatus::AggregationVerified)
+                    Ok(AggregationStatusResponse::AggregationVerified)
                 }
                 _ => Err("Invalid aggregation status"), // Return an error for unexpected status
             }
@@ -125,7 +125,7 @@ pub async fn get_proof_status(
         }
         Err(_) => {
             // If proof not found, set response status to NotFound
-            Ok(ResponseStatus::NotFound)
+            Ok(AggregationStatusResponse::NotFound)
         }
     }
 }
@@ -197,4 +197,9 @@ pub async fn get_tx_context(
     .bind(proof_id)
     .fetch_one(db_pool)
     .await?;
+
+    let tx_hash = tx_row.get::<&[u8], _>("tx_hash").to_vec();
+    let chain_id = tx_row.get::<u64, _>("chain_id");
+    let contract_address = tx_row.get::<&[u8], _>("contract_address").to_vec();
+    Ok((tx_hash, chain_id, contract_address))
 }

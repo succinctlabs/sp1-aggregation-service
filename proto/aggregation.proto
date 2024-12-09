@@ -29,7 +29,13 @@ message GetAggregatedDataResponse {
     // The merkle proof for the given account
     repeated bytes proof = 1;
     // Status of the call
-    ResponseStatus status = 2;
+    AggregationStatusResponse status = 2;
+    // The tx hash of the proof
+    bytes tx_hash = 3;
+    // The chain id of the proof
+    uint64 chain_id = 4;
+    // The contract address of the proof
+    bytes contract_address = 5;
 }
 
 message GetAggregationStatusRequest {
@@ -131,7 +137,7 @@ enum AggregationStatus {
     FAILED = 4;
 }
 
-enum ResponseStatus {
+enum AggregationStatusResponse {
     UNSPECIFIED_RESPONSE_STATUS = 0;
     // Proof was not found
     NOT_FOUND = 1;

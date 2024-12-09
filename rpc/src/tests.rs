@@ -5,8 +5,8 @@ use crate::start_test_rpc_server;
 use sqlx::{sqlite::SqlitePool, Row};
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregateProofRequest, AggregationStatus,
-    GetAggregatedDataRequest, GetAggregationStatusRequest, GetBatchRequest, ProcessBatchRequest,
-    ResponseStatus, UpdateBatchStatusRequest, WriteMerkleTreeRequest,
+    AggregationStatusResponse, GetAggregatedDataRequest, GetAggregationStatusRequest,
+    GetBatchRequest, ProcessBatchRequest, UpdateBatchStatusRequest, WriteMerkleTreeRequest,
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -37,7 +37,10 @@ async fn test_aggregate_proof(db_pool: SqlitePool) -> Result<()> {
         })
         .await?
         .into_inner();
-    assert_eq!(status.status, ResponseStatus::AggregationPending as i32);
+    assert_eq!(
+        status.status,
+        AggregationStatusResponse::AggregationPending as i32
+    );
 
     Ok(())
 }

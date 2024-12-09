@@ -5,7 +5,7 @@ edition = "2021"
 default-run = "script"
 
 [dependencies]
-sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", branch = "umadayal/aggregation-client" }
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1-wip.git", branch = "umadayal/aggregation-client" }
 rpc = { workspace = true }
 types = { workspace = true }
 dotenv = "0.15"
