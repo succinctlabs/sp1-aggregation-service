@@ -117,7 +117,7 @@ message ProofRequest {
     // The batch id of the proof (null when not aggregated)
     optional bytes batch_id = 5;
     // The unix timestamp of when the request was created
-    uint64 created_at = 6;
+    int64 created_at = 6;
 }
 
 message AggregateProofResponse {

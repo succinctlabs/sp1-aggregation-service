@@ -140,8 +140,8 @@ pub struct ProofRequest {
     #[prost(bytes = "vec", optional, tag = "5")]
     pub batch_id: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
     /// The unix timestamp of when the request was created
-    #[prost(uint64, tag = "6")]
-    pub created_at: u64,
+    #[prost(int64, tag = "6")]
+    pub created_at: i64,
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, PartialEq, ::prost::Message)]

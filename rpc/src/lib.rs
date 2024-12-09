@@ -1,4 +1,4 @@
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
+use sqlx::postgres::{PgPool, PgPoolOptions};
 mod aggregation_service;
 mod db;
 mod tests;
@@ -15,11 +15,11 @@ static PORT_COUNTER: AtomicU16 = AtomicU16::new(50052);
 
 #[derive(Debug, Clone)]
 pub struct AggregationRpc {
-    pub db_pool: SqlitePool,
+    pub db_pool: PgPool,
 }
 
-pub async fn new_db(database_url: &str) -> Result<SqlitePool> {
-    let db_pool = SqlitePoolOptions::new()
+pub async fn new_db(database_url: &str) -> Result<PgPool> {
+    let db_pool = PgPoolOptions::new()
         .max_connections(10)
         .connect(database_url)
         .await
@@ -27,7 +27,7 @@ pub async fn new_db(database_url: &str) -> Result<SqlitePool> {
     Ok(db_pool)
 }
 
-pub async fn start(db_pool: SqlitePool, addr: String) -> Result<()> {
+pub async fn start(db_pool: PgPool, addr: String) -> Result<()> {
     let grpc_addr = addr.parse()?;
     let aggregation_rpc = AggregationRpc { db_pool };
 
@@ -53,7 +53,7 @@ pub async fn start(db_pool: SqlitePool, addr: String) -> Result<()> {
     Ok(())
 }
 
-pub async fn start_test_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
+pub async fn start_test_rpc_server(db_pool: PgPool) -> eyre::Result<String> {
     let port = loop {
         let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
         if TcpListener::bind(("127.0.0.1", port)).is_ok() {
@@ -75,7 +75,7 @@ pub async fn start_test_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> 
     Ok(addr)
 }
 
-pub async fn start_rpc_server(db_pool: SqlitePool) -> eyre::Result<String> {
+pub async fn start_rpc_server(db_pool: PgPool) -> eyre::Result<String> {
     let port = loop {
         let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
         if TcpListener::bind(("127.0.0.1", port)).is_ok() {

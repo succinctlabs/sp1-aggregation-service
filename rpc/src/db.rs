@@ -2,11 +2,11 @@ use chrono::Utc;
 use eyre::Result;
 use sha2::{Digest, Sha256};
 use sp1_sdk::{HashableKey, SP1ProofWithPublicValues, SP1VerifyingKey};
-use sqlx::{sqlite::SqlitePool, Row};
+use sqlx::{postgres::PgPool, Row};
 use types::aggregation::{AggregationStatus, AggregationStatusResponse, ProofRequest};
 
 pub async fn create_request(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     proof_id: Vec<u8>,
     proof: Vec<u8>,
     vk: Vec<u8>,
@@ -32,7 +32,7 @@ pub async fn create_request(
 }
 
 pub async fn get_batch(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     created_after: u64,
     batch_size: u64,
 ) -> Result<Vec<ProofRequest>, sqlx::Error> {
@@ -54,7 +54,7 @@ pub async fn get_batch(
 }
 
 pub async fn write_merkle_tree(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     merkle_tree: Vec<u8>,
     batch_id: Vec<u8>,
 ) -> Result<(), sqlx::Error> {
@@ -65,10 +65,7 @@ pub async fn write_merkle_tree(
         .await?;
     Ok(())
 }
-pub async fn get_merkle_tree(
-    db_pool: &SqlitePool,
-    proof_id: Vec<u8>,
-) -> Result<Vec<u8>, sqlx::Error> {
+pub async fn get_merkle_tree(db_pool: &PgPool, proof_id: Vec<u8>) -> Result<Vec<u8>, sqlx::Error> {
     let batch_row = sqlx::query(r#"SELECT batch_id FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
@@ -82,7 +79,7 @@ pub async fn get_merkle_tree(
         .await?;
     Ok(tree.get::<&[u8], _>("tree").to_vec())
 }
-pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>, sqlx::Error> {
+pub async fn get_leaf(db_pool: &PgPool, proof_id: Vec<u8>) -> Result<Vec<u8>, sqlx::Error> {
     let proof_row = sqlx::query(r#"SELECT proof, vk FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
@@ -96,7 +93,7 @@ pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>
     Ok(leaf.to_vec())
 }
 pub async fn get_proof_status(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     proof_id: Vec<u8>,
 ) -> Result<AggregationStatusResponse, sqlx::Error> {
     let proof_row = sqlx::query(r#"SELECT status FROM requests WHERE proof_id = $1"#)
@@ -131,7 +128,7 @@ pub async fn get_proof_status(
 }
 
 pub async fn process_batch(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     proofs: Vec<ProofRequest>,
     batch_id: Vec<u8>,
 ) -> Result<Vec<u8>, sqlx::Error> {
@@ -161,7 +158,7 @@ pub async fn process_batch(
 }
 
 pub async fn update_batch_status(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     batch_id: Vec<u8>,
     status: i32,
 ) -> Result<(), sqlx::Error> {
@@ -188,7 +185,7 @@ pub async fn update_batch_status(
 }
 
 pub async fn get_tx_context(
-    db_pool: &SqlitePool,
+    db_pool: &PgPool,
     proof_id: Vec<u8>,
 ) -> Result<(Vec<u8>, u64, Vec<u8>), sqlx::Error> {
     let tx_row = sqlx::query(
@@ -199,7 +196,7 @@ pub async fn get_tx_context(
     .await?;
 
     let tx_hash = tx_row.get::<&[u8], _>("tx_hash").to_vec();
-    let chain_id = tx_row.get::<u64, _>("chain_id");
+    let chain_id = tx_row.get::<i64, _>("chain_id");
     let contract_address = tx_row.get::<&[u8], _>("contract_address").to_vec();
-    Ok((tx_hash, chain_id, contract_address))
+    Ok((tx_hash, chain_id as u64, contract_address))
 }

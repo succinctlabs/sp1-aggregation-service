@@ -2,7 +2,7 @@ use dotenv::dotenv;
 use eyre::Result;
 // use rpc::start_rpc_server;
 use crate::start_test_rpc_server;
-use sqlx::{sqlite::SqlitePool, Row};
+use sqlx::{postgres::PgPool, Row};
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregateProofRequest, AggregationStatus,
     AggregationStatusResponse, GetAggregatedDataRequest, GetAggregationStatusRequest,
@@ -10,7 +10,7 @@ use types::aggregation::{
 };
 
 #[sqlx::test(migrations = "./migrations")]
-async fn test_aggregate_proof(db_pool: SqlitePool) -> Result<()> {
+async fn test_aggregate_proof(db_pool: PgPool) -> Result<()> {
     dotenv().ok();
     let rpc_addr = start_test_rpc_server(db_pool).await?;
     println!("Connecting to RPC server at {}", rpc_addr);
@@ -46,7 +46,7 @@ async fn test_aggregate_proof(db_pool: SqlitePool) -> Result<()> {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn test_e2e(db_pool: SqlitePool) -> Result<()> {
+async fn test_e2e(db_pool: PgPool) -> Result<()> {
     dotenv().ok();
     let rpc_addr = start_test_rpc_server(db_pool).await?;
     println!("Connecting to RPC server at {}", rpc_addr);
