@@ -13,6 +13,13 @@ use types::{
     merkle_tree::MerkleTree,
 };
 
+#[derive(Debug)]
+pub struct AggregationTransactionContext {
+    pub tx_hash: Vec<u8>,
+    pub chain_id: u64,
+    pub contract_address: Vec<u8>,
+}
+
 #[tonic::async_trait]
 impl AggregationService for AggregationRpc {
     async fn get_aggregated_data(
@@ -26,7 +33,7 @@ impl AggregationService for AggregationRpc {
         let response_status = db::get_proof_status(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-        if response_status == ResponseStatus::NotFound as i32 {
+        if response_status == ResponseStatus::NotFound {
             return Ok(Response::new(GetAggregatedDataResponse {
                 proof: vec![],
                 status: ResponseStatus::NotFound as i32,
@@ -53,9 +60,17 @@ impl AggregationService for AggregationRpc {
             .expect("Failed to generate proof");
         let merkle_proof_vec = merkle_proof.iter().map(|leaf| leaf.to_vec()).collect();
 
+        let (tx_hash, chain_id, contract_address) =
+            db::get_tx_context(&self.db_pool, proof_id.clone())
+                .await
+                .map_err(|e| Status::internal(e.to_string()))?;
+
         Ok(Response::new(GetAggregatedDataResponse {
             proof: merkle_proof_vec,
-            status: response_status,
+            status: response_status as i32,
+            tx_hash,
+            chain_id,
+            contract_address,
         }))
     }
 
@@ -68,7 +83,9 @@ impl AggregationService for AggregationRpc {
         let status = db::get_proof_status(&self.db_pool, proof_id.clone())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-        Ok(Response::new(GetAggregationStatusResponse { status }))
+        Ok(Response::new(GetAggregationStatusResponse {
+            status: status as i32,
+        }))
     }
 
     async fn aggregate_proof(

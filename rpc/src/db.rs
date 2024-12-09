@@ -14,7 +14,7 @@ pub async fn create_request(
     let pending_status = AggregationStatus::Pending;
     let created_at = Utc::now().timestamp_millis();
     sqlx::query(
-        r#"INSERT INTO requests (proof_id, status, proof, vk, batch_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"#,
+        r#"INSERT INTO requests (proof_id, status, proof, vk, batch_id, created_at, tx_hash, chain_id, contract_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
     )
     .bind(proof_id)
     .bind(pending_status)
@@ -22,6 +22,9 @@ pub async fn create_request(
     .bind(vk)
     .bind::<Option<Vec<u8>>>(None)
     .bind(created_at)
+    .bind::<Option<Vec<u8>>>(None)
+    .bind::<Option<u64>>(None)
+    .bind::<Option<Vec<u8>>>(None)
     .execute(db_pool)
     .await?;
 
@@ -92,7 +95,10 @@ pub async fn get_leaf(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<Vec<u8>
     let leaf = Sha256::digest([public_values.as_slice(), &vk.hash_bytes()].concat());
     Ok(leaf.to_vec())
 }
-pub async fn get_proof_status(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result<i32, sqlx::Error> {
+pub async fn get_proof_status(
+    db_pool: &SqlitePool,
+    proof_id: Vec<u8>,
+) -> Result<ResponseStatus, sqlx::Error> {
     let proof_row = sqlx::query(r#"SELECT status FROM requests WHERE proof_id = $1"#)
         .bind(proof_id)
         .fetch_one(db_pool)
@@ -115,11 +121,11 @@ pub async fn get_proof_status(db_pool: &SqlitePool, proof_id: Vec<u8>) -> Result
                 _ => Err("Invalid aggregation status"), // Return an error for unexpected status
             }
             .unwrap();
-            Ok(response_status as i32)
+            Ok(response_status)
         }
         Err(_) => {
             // If proof not found, set response status to NotFound
-            Ok(ResponseStatus::NotFound as i32)
+            Ok(ResponseStatus::NotFound)
         }
     }
 }
@@ -179,4 +185,16 @@ pub async fn update_batch_status(
     }
 
     Ok(())
+}
+
+pub async fn get_tx_context(
+    db_pool: &SqlitePool,
+    proof_id: Vec<u8>,
+) -> Result<(Vec<u8>, u64, Vec<u8>), sqlx::Error> {
+    let tx_row = sqlx::query(
+        r#"SELECT tx_hash, chain_id, contract_address FROM requests WHERE proof_id = $1"#,
+    )
+    .bind(proof_id)
+    .fetch_one(db_pool)
+    .await?;
 }

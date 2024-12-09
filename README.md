@@ -2,90 +2,68 @@
 
 Provides a service for aggregating [SP1](https://github.com/succinctlabs/sp1) proofs from multiple users. 
 
+![SP1 Proof Aggregation Service](./proof_aggregation.png)
+
 ## Requirements
 
 - [Rust](https://rustup.rs/)
 - [SP1](https://docs.succinct.xyz/getting-started/install.html)
 
-## Running the Project
+## Running the Service
 
-There are four main ways to run this project: build a program, execute a program, generate a core proof, and
-generate an EVM-compatible proof.
+There are four steps to running the service:
 
-### Build the Program
+1. **Run the Aggregation Server**
+   ```sh
+   cd rpc
+   cargo run
+   ```
+   Should output something like:
+   ```
+   RPC server started on 127.0.0.1:50051
+   ```
+   Update the `RPC_GRPC_ADDR` variable in the `.env` file with the address displayed in the output.
 
-To build the program, run the following command:
+2. **Run the Aggregation Service**
+   ```sh
+   cd script
+   RUST_LOG=info cargo run --release -- --prove
+   ```
 
-```sh
-cd program
-cargo prove build
+3. **Run the Aggregation Client SDK to test the aggregation service**
+   ```sh
+   cargo run --release --bin aggregation_client_sdk
+   ```
+
+## User API
+
+To be able to aggregate your SP1 proofs, 
+you need to use the `sp1-sdk` to interact with the aggregation service. Here's an example of how to use it:
+
+```rust
+use sp1_sdk::AggregationClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = ProverClient::new();
+    let aggregation_client = AggregationClient::new();
+    let (pk, vk) = client.setup(PROGRAM_ELF);
+    let mut stdin = SP1Stdin::new();
+    let proof = client
+		.prove(&pk, stdin)
+		.compressed()
+		.run()
+		.expect("proving failed");
+    let proof_id = aggregation_client.aggregate(proof, vk).await?;
+
+     let aggregated_data_response = aggregation_client
+        .get_aggregated_data(proof_id)
+        .await
+        .unwrap();
+
+    let result = aggregation_client.verify_aggregated_data(proof_id, aggregated_data_response).await.expect("verification failed");
+
+    Ok(())
+}
 ```
-
-### Execute the Program
-
-To run the program without generating a proof:
-
-```sh
-cd script
-cargo run --release -- --execute
-```
-
-This will execute the program and display the output.
-
-### Generate a Core Proof
-
-To generate a core proof for your program:
-
-```sh
-cd script
-cargo run --release -- --prove
-```
-
-### Generate an EVM-Compatible Proof
-
-> [!WARNING]
-> You will need at least 128GB RAM to generate a Groth16 or PLONK proof.
-
-To generate a proof that is small enough to be verified on-chain and verifiable by the EVM:
-
-```sh
-cd script
-cargo run --release --bin evm -- --system groth16
-```
-
-this will generate a Groth16 proof. If you want to generate a PLONK proof, run the following command:
-
-```sh
-cargo run --release --bin evm -- --system plonk
-```
-
-These commands will also generate fixtures that can be used to test the verification of SP1 zkVM proofs
-inside Solidity.
-
-### Retrieve the Verification Key
-
-To retrieve your `programVKey` for your on-chain contract, run the following command:
-
-```sh
-cargo prove vkey --program fibonacci-program
-```
-
-## Using the Prover Network
-
-We highly recommend using the Succinct prover network for any non-trivial programs or benchmarking purposes. For more information, see the [setup guide](https://docs.succinct.xyz/generating-proofs/prover-network.html).
-
-To get started, copy the example environment file:
-
-```sh
-cp .env.example .env
-```
-
-Then, set the `SP1_PROVER` environment variable to `network` and set the `SP1_PRIVATE_KEY`
-environment variable to your whitelisted private key.
-
-For example, to generate an EVM-compatible proof using the prover network, run the following
-command:
-
-```sh
-SP1_PROVER=network SP1_PRIVATE_KEY=... cargo run --release --bin evm
-```
+**Note:** Make sure to set `AGGREGATION_RPC_ADDR` in the `.env` file to the address of the aggregation server.

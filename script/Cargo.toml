@@ -5,7 +5,7 @@ edition = "2021"
 default-run = "script"
 
 [dependencies]
-sp1-sdk = { workspace = true }
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", branch = "umadayal/aggregation-client" }
 rpc = { workspace = true }
 types = { workspace = true }
 dotenv = "0.15"
@@ -22,6 +22,10 @@ path = "src/main.rs"
 [[bin]]
 name = "generate-compressed"
 path = "bin/generate_compressed.rs"
+
+[[bin]]
+name = "aggregation-client"
+path = "bin/aggregation_client_sdk.rs"
 
 [build-dependencies]
 sp1-build = { workspace = true }
