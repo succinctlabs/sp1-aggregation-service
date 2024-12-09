@@ -6,7 +6,10 @@ CREATE TABLE requests (
     vk BLOB NOT NULL,
     batch_id BLOB NULL,
     status INTEGER NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    tx_hash BLOB NULL,
+    chain_id INTEGER NULL,
+    contract_address BLOB NULL
 );
 
 CREATE TABLE merkle_trees (

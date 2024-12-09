@@ -13,13 +13,6 @@ use types::{
     merkle_tree::MerkleTree,
 };
 
-#[derive(Debug)]
-pub struct AggregationTransactionContext {
-    pub tx_hash: Vec<u8>,
-    pub chain_id: u64,
-    pub contract_address: Vec<u8>,
-}
-
 #[tonic::async_trait]
 impl AggregationService for AggregationRpc {
     async fn get_aggregated_data(
