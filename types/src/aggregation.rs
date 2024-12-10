@@ -71,6 +71,23 @@ pub struct GetBatchResponse {
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetVkeyAndPublicValuesRequest {
+    /// The proof id to get the leaf for
+    #[prost(bytes = "vec", tag = "1")]
+    pub proof_id: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetVkeyAndPublicValuesResponse {
+    /// The vkey for the given proof
+    #[prost(bytes = "vec", tag = "1")]
+    pub vkey: ::prost::alloc::vec::Vec<u8>,
+    /// The public values for the given proof
+    #[prost(bytes = "vec", tag = "2")]
+    pub public_values: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ProcessBatchRequest {
     /// The list of proof requests to process
     #[prost(message, repeated, tag = "1")]
@@ -119,6 +136,26 @@ pub struct UpdateBatchStatusResponse {
     /// Indicates if the update was successful
     #[prost(bool, tag = "1")]
     pub success: bool,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VerifyAggregationProofRequest {
+    /// The proof to verify
+    #[prost(bytes = "vec", tag = "1")]
+    pub proof: ::prost::alloc::vec::Vec<u8>,
+    /// The batch id of the proof
+    #[prost(bytes = "vec", tag = "2")]
+    pub batch_id: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VerifyAggregationProofResponse {
+    /// Indicates if the proof was verified
+    #[prost(bool, tag = "1")]
+    pub verified: bool,
+    /// The tx hash of the proof
+    #[prost(bytes = "vec", tag = "2")]
+    pub tx_hash: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(serde::Serialize, serde::Deserialize)]
 #[derive(sqlx::FromRow)]
@@ -434,6 +471,36 @@ pub mod aggregation_service_client {
                 .insert(GrpcMethod::new("aggregation.AggregationService", "GetBatch"));
             self.inner.unary(req, path, codec).await
         }
+        /// Get the corresponding leaf for a given proof
+        pub async fn get_vkey_and_public_values(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetVkeyAndPublicValuesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetVkeyAndPublicValuesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/aggregation.AggregationService/GetVkeyAndPublicValues",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "aggregation.AggregationService",
+                        "GetVkeyAndPublicValues",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /// Write a merkle tree to the database
         pub async fn write_merkle_tree(
             &mut self,
@@ -518,6 +585,36 @@ pub mod aggregation_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /// Verify aggregation proof and update requests with tx hash, contract address, and chain id
+        pub async fn verify_aggregation_proof(
+            &mut self,
+            request: impl tonic::IntoRequest<super::VerifyAggregationProofRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::VerifyAggregationProofResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/aggregation.AggregationService/VerifyAggregationProof",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "aggregation.AggregationService",
+                        "VerifyAggregationProof",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -565,6 +662,14 @@ pub mod aggregation_service_server {
             tonic::Response<super::GetBatchResponse>,
             tonic::Status,
         >;
+        /// Get the corresponding leaf for a given proof
+        async fn get_vkey_and_public_values(
+            &self,
+            request: tonic::Request<super::GetVkeyAndPublicValuesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetVkeyAndPublicValuesResponse>,
+            tonic::Status,
+        >;
         /// Write a merkle tree to the database
         async fn write_merkle_tree(
             &self,
@@ -587,6 +692,14 @@ pub mod aggregation_service_server {
             request: tonic::Request<super::UpdateBatchStatusRequest>,
         ) -> std::result::Result<
             tonic::Response<super::UpdateBatchStatusResponse>,
+            tonic::Status,
+        >;
+        /// Verify aggregation proof and update requests with tx hash, contract address, and chain id
+        async fn verify_aggregation_proof(
+            &self,
+            request: tonic::Request<super::VerifyAggregationProofRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::VerifyAggregationProofResponse>,
             tonic::Status,
         >;
     }
@@ -855,6 +968,55 @@ pub mod aggregation_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/aggregation.AggregationService/GetVkeyAndPublicValues" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetVkeyAndPublicValuesSvc<T: AggregationService>(pub Arc<T>);
+                    impl<
+                        T: AggregationService,
+                    > tonic::server::UnaryService<super::GetVkeyAndPublicValuesRequest>
+                    for GetVkeyAndPublicValuesSvc<T> {
+                        type Response = super::GetVkeyAndPublicValuesResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetVkeyAndPublicValuesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AggregationService>::get_vkey_and_public_values(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetVkeyAndPublicValuesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/aggregation.AggregationService/WriteMerkleTree" => {
                     #[allow(non_camel_case_types)]
                     struct WriteMerkleTreeSvc<T: AggregationService>(pub Arc<T>);
@@ -984,6 +1146,55 @@ pub mod aggregation_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateBatchStatusSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/aggregation.AggregationService/VerifyAggregationProof" => {
+                    #[allow(non_camel_case_types)]
+                    struct VerifyAggregationProofSvc<T: AggregationService>(pub Arc<T>);
+                    impl<
+                        T: AggregationService,
+                    > tonic::server::UnaryService<super::VerifyAggregationProofRequest>
+                    for VerifyAggregationProofSvc<T> {
+                        type Response = super::VerifyAggregationProofResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::VerifyAggregationProofRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AggregationService>::verify_aggregation_proof(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = VerifyAggregationProofSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

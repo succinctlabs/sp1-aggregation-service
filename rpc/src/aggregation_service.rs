@@ -1,14 +1,16 @@
-use crate::{db, AggregationRpc};
+use crate::{db, relay, AggregationRpc};
 use rand::Rng;
+use sp1_sdk::SP1ProofWithPublicValues;
 use tonic::{Request, Response, Status};
 use types::{
     aggregation::{
         aggregation_service_server::AggregationService, AggregateProofRequest,
         AggregateProofResponse, AggregationStatusResponse, GetAggregatedDataRequest,
         GetAggregatedDataResponse, GetAggregationStatusRequest, GetAggregationStatusResponse,
-        GetBatchRequest, GetBatchResponse, ProcessBatchRequest, ProcessBatchResponse,
-        UpdateBatchStatusRequest, UpdateBatchStatusResponse, WriteMerkleTreeRequest,
-        WriteMerkleTreeResponse,
+        GetBatchRequest, GetBatchResponse, GetVkeyAndPublicValuesRequest,
+        GetVkeyAndPublicValuesResponse, ProcessBatchRequest, ProcessBatchResponse,
+        UpdateBatchStatusRequest, UpdateBatchStatusResponse, VerifyAggregationProofRequest,
+        VerifyAggregationProofResponse, WriteMerkleTreeRequest, WriteMerkleTreeResponse,
     },
     merkle_tree::MerkleTree,
 };
@@ -117,6 +119,20 @@ impl AggregationService for AggregationRpc {
         }))
     }
 
+    async fn get_vkey_and_public_values(
+        &self,
+        request: Request<GetVkeyAndPublicValuesRequest>,
+    ) -> Result<Response<GetVkeyAndPublicValuesResponse>, Status> {
+        let req = request.into_inner();
+        let (vkey, public_values) = db::get_vkey_and_public_values(&self.db_pool, req.proof_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(GetVkeyAndPublicValuesResponse {
+            vkey: vkey.to_vec(),
+            public_values: public_values.to_vec(),
+        }))
+    }
+
     async fn process_batch(
         &self,
         request: Request<ProcessBatchRequest>,
@@ -153,5 +169,23 @@ impl AggregationService for AggregationRpc {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(UpdateBatchStatusResponse { success: true }))
+    }
+
+    async fn verify_aggregation_proof(
+        &self,
+        request: Request<VerifyAggregationProofRequest>,
+    ) -> Result<Response<VerifyAggregationProofResponse>, Status> {
+        let req = request.into_inner();
+        let proof: SP1ProofWithPublicValues = bincode::deserialize(&req.proof).unwrap();
+        let tx_hash = relay::relay_proof(proof)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        db::update_proof_tx_hash(&self.db_pool, req.batch_id, tx_hash.clone())
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(VerifyAggregationProofResponse {
+            verified: true,
+            tx_hash,
+        }))
     }
 }

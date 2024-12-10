@@ -1,6 +1,7 @@
 use sqlx::postgres::{PgPool, PgPoolOptions};
 mod aggregation_service;
 mod db;
+mod relay;
 mod tests;
 use eyre::Result;
 use std::{

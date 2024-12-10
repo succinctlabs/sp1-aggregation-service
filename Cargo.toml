@@ -9,7 +9,13 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-alloy-sol-types = "0.7.7"
+alloy-sol-types = "0.8.0"
+alloy-provider = "0.8.0"
+alloy-network = "0.8.0"
+alloy-signer-local = "0.8.0"
+alloy-rpc-types-eth = "0.8.0"
+alloy-contract = "0.8.0"
+
 types = { path = "types" }
 rpc = { path = "rpc" }
 sp1-sdk = "3.0.0"

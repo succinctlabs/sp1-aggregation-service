@@ -1,6 +1,6 @@
 # SP1 Proof Aggregation Service
 
-Provides a service for aggregating [SP1](https://github.com/succinctlabs/sp1) proofs from multiple users. 
+Provides a service for aggregating [SP1](https://github.com/succinctlabs/sp1) proofs from multiple users as per this [spec](https://hackmd.io/@succinct/HJXbXAVlJe). 
 
 ![SP1 Proof Aggregation Service](./proof_aggregation.png)
 
@@ -66,4 +66,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
-**Note:** Make sure to set `AGGREGATION_RPC_ADDR` in the `.env` file to the address of the aggregation server.

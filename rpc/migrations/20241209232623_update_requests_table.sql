@@ -14,6 +14,6 @@ CREATE TABLE requests (
 );
 
 CREATE TABLE merkle_trees (
-    batch_id BYTEA NOT NULL,    -- Changed BLOB to BYTEA
-    tree BYTEA NOT NULL         -- Changed BLOB to BYTEA
+    batch_id BYTEA NOT NULL,
+    tree BYTEA NOT NULL
 );

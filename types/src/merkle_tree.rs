@@ -1,5 +1,6 @@
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use tiny_keccak::{Hasher, Keccak};
 
 pub struct MerkleProof {
     pub proof: Vec<[u8; 32]>,
@@ -39,9 +40,17 @@ impl MerkleTree {
                     let left = chunk[0];
                     let right = chunk[1];
                     let hash: [u8; 32] = if left > right {
-                        Sha256::digest([right, left].concat()).into() // Reverse if left > right
+                        let mut hasher = Keccak::v256();
+                        let mut output = [0u8; 32];
+                        hasher.update(&[right, left].concat());
+                        hasher.finalize(&mut output);
+                        output
                     } else {
-                        Sha256::digest([left, right].concat()).into()
+                        let mut hasher = Keccak::v256();
+                        let mut output = [0u8; 32];
+                        hasher.update(&[left, right].concat());
+                        hasher.finalize(&mut output);
+                        output
                     };
                     next_layer.push(hash);
                 }
@@ -95,11 +104,15 @@ impl MerkleTree {
     pub fn verify_proof(&self, proof: Vec<[u8; 32]>, leaf: [u8; 32]) -> bool {
         let mut current_hash = leaf;
         for sibling in proof {
+            let mut hasher = Keccak::v256();
+            let mut output = [0u8; 32];
             if current_hash < sibling {
-                current_hash = Sha256::digest([current_hash, sibling].concat()).into();
+                hasher.update(&[current_hash, sibling].concat());
             } else {
-                current_hash = Sha256::digest([sibling, current_hash].concat()).into();
+                hasher.update(&[sibling, current_hash].concat());
             }
+            hasher.finalize(&mut output);
+            current_hash = output;
         }
         current_hash == self.root
     }

@@ -89,9 +89,26 @@ pub async fn get_leaf(db_pool: &PgPool, proof_id: Vec<u8>) -> Result<Vec<u8>, sq
     let vk_bytes = proof_row.get::<&[u8], _>("vk").to_vec();
     let vk: SP1VerifyingKey = bincode::deserialize(&vk_bytes).unwrap();
     let public_values = proof.public_values;
-    let leaf = Sha256::digest([public_values.as_slice(), &vk.hash_bytes()].concat());
+    let leaf = Sha256::digest([&vk.hash_bytes(), public_values.as_slice()].concat());
     Ok(leaf.to_vec())
 }
+
+pub async fn get_vkey_and_public_values(
+    db_pool: &PgPool,
+    proof_id: Vec<u8>,
+) -> Result<(Vec<u8>, Vec<u8>), sqlx::Error> {
+    let proof_row = sqlx::query(r#"SELECT vk, proof FROM requests WHERE proof_id = $1"#)
+        .bind(proof_id)
+        .fetch_one(db_pool)
+        .await?;
+    let proof_bytes = proof_row.get::<&[u8], _>("proof").to_vec();
+    let proof: SP1ProofWithPublicValues = bincode::deserialize(&proof_bytes).unwrap();
+    let vk_bytes = proof_row.get::<&[u8], _>("vk").to_vec();
+    let vk: SP1VerifyingKey = bincode::deserialize(&vk_bytes).unwrap();
+    let public_values = proof.public_values;
+    Ok((vk.hash_bytes().to_vec(), public_values.to_vec()))
+}
+
 pub async fn get_proof_status(
     db_pool: &PgPool,
     proof_id: Vec<u8>,
@@ -199,4 +216,21 @@ pub async fn get_tx_context(
     let chain_id = tx_row.get::<i64, _>("chain_id");
     let contract_address = tx_row.get::<&[u8], _>("contract_address").to_vec();
     Ok((tx_hash, chain_id as u64, contract_address))
+}
+
+pub async fn update_proof_tx_hash(
+    db_pool: &PgPool,
+    batch_id: Vec<u8>,
+    tx_hash: Vec<u8>,
+) -> Result<(), sqlx::Error> {
+    let contract_address = std::env::var("CONTRACT_ADDRESS").unwrap();
+    let chain_id = std::env::var("CHAIN_ID").unwrap();
+    sqlx::query(r#"UPDATE requests SET tx_hash = $1, contract_address = $2, chain_id = $3 WHERE batch_id = $4"#)
+        .bind(tx_hash)
+        .bind(contract_address)
+        .bind(chain_id)
+        .bind(batch_id)
+        .execute(db_pool)
+        .await?;
+    Ok(())
 }

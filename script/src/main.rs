@@ -4,7 +4,8 @@ use sp1_sdk::{
 };
 use types::aggregation::{
     aggregation_service_client::AggregationServiceClient, AggregationStatus, GetBatchRequest,
-    ProcessBatchRequest, UpdateBatchStatusRequest, WriteMerkleTreeRequest,
+    ProcessBatchRequest, UpdateBatchStatusRequest, VerifyAggregationProofRequest,
+    WriteMerkleTreeRequest,
 };
 
 const AGGREGATION_ELF: &[u8] =
@@ -99,9 +100,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Verify the aggregated proof
         println!("Verifying aggregated proof");
-        client
-            .verify(&aggregated_proof, &aggregation_vk)
-            .expect("Proof verification failed");
+        let aggregated_proof_bytes = bincode::serialize(&aggregated_proof).unwrap();
+        let response = network_client
+            .verify_aggregation_proof(VerifyAggregationProofRequest {
+                proof: aggregated_proof_bytes,
+                batch_id: batch_id.clone(),
+            })
+            .await
+            .expect("Failed to verify aggregation proof")
+            .into_inner();
+        println!("tx: {:?}", response.tx_hash);
+        // println!("Response: {:?}", response);
+        // client
+        //     .verify(&aggregated_proof, &aggregation_vk)
+        //     .expect("Proof verification failed");
 
         // Update the status of all the proofs in the batch to verified.
         println!("Updating batch status to verified");

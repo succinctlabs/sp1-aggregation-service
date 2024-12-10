@@ -12,12 +12,16 @@ service AggregationService {
     rpc AggregateProof(AggregateProofRequest) returns (AggregateProofResponse) {}
     // Get a batch of proofs that have not yet been aggregated
     rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
+    // Get the corresponding leaf for a given proof
+    rpc GetVkeyAndPublicValues(GetVkeyAndPublicValuesRequest) returns (GetVkeyAndPublicValuesResponse) {}
     // Write a merkle tree to the database
     rpc WriteMerkleTree(WriteMerkleTreeRequest) returns (WriteMerkleTreeResponse) {}
     // Process a batch of proofs
     rpc ProcessBatch(ProcessBatchRequest) returns (ProcessBatchResponse) {}
     // Update status of batch of proofs
     rpc UpdateBatchStatus(UpdateBatchStatusRequest) returns (UpdateBatchStatusResponse) {}
+    // Verify aggregation proof and update requests with tx hash, contract address, and chain id
+    rpc VerifyAggregationProof(VerifyAggregationProofRequest) returns (VerifyAggregationProofResponse) {}
 }
 
 message GetAggregatedDataRequest {
@@ -69,6 +73,18 @@ message GetBatchResponse {
     bytes batch_id = 2;
 }
 
+message GetVkeyAndPublicValuesRequest {
+    // The proof id to get the leaf for
+    bytes proof_id = 1;
+}
+
+message GetVkeyAndPublicValuesResponse {
+    // The vkey for the given proof
+    bytes vkey = 1;
+    // The public values for the given proof
+    bytes public_values = 2;
+}
+
 message ProcessBatchRequest {
     // The list of proof requests to process
     repeated ProofRequest proofs = 1;
@@ -103,6 +119,20 @@ message UpdateBatchStatusRequest {
 message UpdateBatchStatusResponse {
     // Indicates if the update was successful
     bool success = 1;
+}
+
+message VerifyAggregationProofRequest {
+    // The proof to verify
+    bytes proof = 1;
+    // The batch id of the proof
+    bytes batch_id = 2;
+}
+
+message VerifyAggregationProofResponse {
+    // Indicates if the proof was verified
+    bool verified = 1;
+    // The tx hash of the proof
+    bytes tx_hash = 2;
 }
 
 message ProofRequest {

@@ -2,6 +2,22 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-fs_permissions = [{ access = "read-write", path = "./" }]
+fs_permissions = [
+    { access = "read", path = "./out" },
+    { access = "read-write", path = "./deployments" },
+]
+
+[fmt]
+line_length = 100
+tab_width = 4
+func_attrs_with_params_multiline = true
+ignore = ["lib/**"]
+
+[rpc_endpoints]
+sepolia = "${RPC_SEPOLIA}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY_SEPOLIA}", url = "${ETHERSCAN_API_URL_SEPOLIA}" }
+
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
